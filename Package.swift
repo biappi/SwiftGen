@@ -30,16 +30,16 @@ let package = Package(
           "PathKit",
           "Yams"
         ]),
-        .testTarget(name: "SwiftGenKitTests", dependencies: [
-          "SwiftGenKit"
-        ]),
-        .testTarget(name: "SwiftGenTests", dependencies: [
-          "SwiftGen"
-        ]),
-        .testTarget(name: "TemplatesTests", dependencies: [
-          "StencilSwiftKit",
-          "SwiftGenKit"
-        ])
+//        .testTarget(name: "SwiftGenKitTests", dependencies: [
+//          "SwiftGenKit"
+//        ]),
+//        .testTarget(name: "SwiftGenTests", dependencies: [
+//          "SwiftGen"
+//        ]),
+//        .testTarget(name: "TemplatesTests", dependencies: [
+//          "StencilSwiftKit",
+//          "SwiftGenKit"
+//        ])
     ],
     swiftLanguageVersions: [.v5]
 )
