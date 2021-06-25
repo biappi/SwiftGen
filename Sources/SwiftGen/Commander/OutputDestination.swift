@@ -34,10 +34,10 @@ extension OutputDestination {
     case .console:
       print(content)
     case .file(let path):
-      if try onlyIfChanged && path.exists && path.read(.utf8) == content {
-        logMessage(.info, "Not writing the file as content is unchanged")
-        return
-      }
+//      if try onlyIfChanged && path.exists && path.read(.utf8) == content {
+//        logMessage(.info, "Not writing the file as content is unchanged")
+//        return
+//      }
       try path.write(content)
       logMessage(.info, "File written: \(path)")
     }
