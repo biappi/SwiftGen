@@ -21,29 +21,12 @@ private extension String {
 
 extension Strings.Parser {
   public func stencilContext() -> [String: Any] {
-    let entryToStringMapper = { (entry: Strings.Entry, keyPath: [String]) -> [String: Any] in
-      var result: [String: Any] = [
-        "name": entry.keyStructure.last ?? "",
-        "key": entry.key.newlineEscaped,
-        "translation": entry.translation.newlineEscaped
-      ]
-
-      if !entry.types.isEmpty {
-        result["types"] = entry.types.map { $0.rawValue }
-      }
-
-      return result
-    }
-
     let tables = self.tables
       .sorted { $0.key.lowercased() < $1.key.lowercased() }
       .map { name, entries in
         [
           "name": name,
-          "levels": structure(
-            entries: entries,
-            usingMapper: entryToStringMapper
-          )
+          "levels": structure(entries).toDict(name: "")
         ]
       }
 
@@ -51,41 +34,60 @@ extension Strings.Parser {
       "tables": tables
     ]
   }
+}
 
-  typealias Mapper = (_ entry: Strings.Entry, _ keyPath: [String]) -> [String: Any]
-  private func structure(
-    entries: [Strings.Entry],
-    atKeyPath keyPath: [String] = [],
-    usingMapper mapper: @escaping Mapper
-  ) -> [String: Any] {
-    var structuredStrings: [String: Any] = [:]
-    if let name = keyPath.last {
-      structuredStrings["name"] = name
+extension Strings.Entry {
+    var dict: [String: Any] {
+        [
+            "name": keyStructure.last ?? "",
+            "key": key.newlineEscaped,
+            "translation": translation.newlineEscaped,
+            "types": types.map { $0.rawValue }
+        ]
+    }
+}
+
+class NamesSpace {
+    var strings: [Strings.Entry]    = []
+    var children: [String : NamesSpace]  = [:]
+
+    func toDict(name: String) -> [String: Any] {
+        return [
+            "name":     name,
+            "strings":
+                strings
+                    .sorted {
+                        ($0.keyStructure.last?.lowercased() ?? "") <
+                        ($1.keyStructure.last?.lowercased() ?? "")
+                    }
+                    .map  {
+                        $0.dict
+                    },
+
+            "children":
+                children
+                    .sorted { $0.key < $1.key}
+                    .map { $0.value.toDict(name: $0.key) },
+        ]
     }
 
-    // collect strings for this level
-    let strings = entries
-      .filter { $0.keyStructure.count == keyPath.count + 1 }
-      .sorted { $0.key.lowercased() < $1.key.lowercased() }
-      .map { mapper($0, keyPath) }
-
-    if !strings.isEmpty {
-      structuredStrings["strings"] = strings
+    func getOrAddChild(_ name: String) -> NamesSpace {
+        let child = children[name, default: NamesSpace()]
+        children[name] = child
+        return child
     }
 
-    // collect children for this level, group them by name for the next level, sort them
-    // and then structure those grouped entries
-    let childEntries = entries.filter { $0.keyStructure.count > keyPath.count + 1 }
-    let children = Dictionary(grouping: childEntries) { $0.keyStructure[keyPath.count] }
-      .sorted { $0.key < $1.key }
-      .map { name, entries in
-        structure(entries: entries, atKeyPath: keyPath + [name], usingMapper: mapper)
-      }
-
-    if !children.isEmpty {
-      structuredStrings["children"] = children
+    func getOrAddChild(atPath path: [String]) -> NamesSpace {
+        return path.reduce(self) { node, keyFragment in
+            node.getOrAddChild(keyFragment)
+        }
     }
+}
 
-    return structuredStrings
-  }
+func structure(_ entries: [Strings.Entry]) -> NamesSpace {
+    return entries.reduce(NamesSpace()) { tree, entry in
+        let node = tree.getOrAddChild(atPath: entry.keyStructure.dropLast())
+        node.strings.append(entry)
+        return tree
+    }
 }
