@@ -21,12 +21,19 @@ private extension String {
 
 extension Strings.Parser {
   public func stencilContext() -> [String: Any] {
+
+      let flattened = { (entries: [Strings.Entry]) -> NamesSpace in
+          let tree = structure(entries)
+          flattenKeys(tree)
+          return tree
+      }
+
     let tables = self.tables
       .sorted { $0.key.lowercased() < $1.key.lowercased() }
       .map { name, entries in
         [
           "name": name,
-          "levels": structure(entries).toDict(name: "")
+          "levels": flattened(entries).toDict(name: "")
         ]
       }
 
@@ -89,5 +96,20 @@ func structure(_ entries: [Strings.Entry]) -> NamesSpace {
         let node = tree.getOrAddChild(atPath: entry.keyStructure.dropLast())
         node.strings.append(entry)
         return tree
+    }
+}
+
+func flattenKeys(_ parent: NamesSpace) {
+    for (name, node) in parent.children {
+        flattenKeys(node)
+
+        if let (childName, onlyChild) = node.children.first,
+           node.children.count == 1
+        {
+            let newChild = parent.getOrAddChild(name + "_" + childName)
+            newChild.children = onlyChild.children
+            newChild.strings = onlyChild.strings
+            parent.children.removeValue(forKey: name)
+        }
     }
 }
